@@ -1,9 +1,11 @@
-import display_RRT
+import sys
+sys.path.append('/Users/shedlock/projects/rrt_graph_builder/rrtDemo')  # or wherever your .so is
+import rrtDemo
 
 # Example usage of the exposed VisRRT class (named RRT in Python)
 
 # Initialize with default constructor
-vis_rrt = display_RRT.RRT()
+vis_rrt = rrtDemo.RRT()
 
 # Set up parameters for the RRT
 range_a_x = -5.0
