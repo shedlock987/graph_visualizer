@@ -1,6 +1,9 @@
 import sys
 import os
 import numpy as np
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_graph_builder/rrtDemo'))
 import rrtDemo
 
@@ -44,18 +47,40 @@ occp_interval = [float(i) for i in [1.0, 1.0, 1.0]]
 vis_rrt.setOccupancyMap(occp_coords, occp_widths, occp_interval)
 
 
-# Build the RRT tree
-vis_rrt.buildRRT()
+# Build the RRT tree step by step
+while not vis_rrt.isComplete():
+    vis_rrt.stepRRT()
 
 # Check results
 print("RRT build complete:", vis_rrt.isComplete())
 print("Number of nodes:", vis_rrt.getNodeCount())
 
-# Alternatively, build step by step
-# vis_rrt = display_RRT.RRT()
-# vis_rrt.initializeRRT(...)  # same as above
-# vis_rrt.setOccupancyMap(...)  # same as above
-# while not vis_rrt.isComplete():
-#     stepped = vis_rrt.stepRRT()
-#     print("Stepped:", stepped)
-# print("Final node count:", vis_rrt.getNodeCount())
+# Create the 3D plot
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+# Plot each occupancy grid cell as a rectangular prism (assuming square base in XY, height along Z)
+for i in range(len(occp_coords)):
+    x = occp_coords[i][0]
+    y = occp_coords[i][1]
+    w = occp_widths[i]  # width (side length in X and Y)
+    h = occp_interval[i]  # height (along Z)
+    # bar3d(x, y, z, dx, dy, dz) where (x,y,z) is the bottom-left corner
+    ax.bar3d(x - w / 2, y - w / 2, 0, w, w, h, shade=True, color='red', alpha=0.8)
+
+# Plot a blue dot at the origin (0,0,0)
+ax.scatter(0, 0, 0, color='blue', s=50)
+
+# Set labels and title
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_zlabel('Time')
+ax.set_title('3D Plot of Occupancy Grid Cells')
+
+# Set axis limits
+ax.set_xlim(0, 10)
+ax.set_ylim(0, 10)
+ax.set_zlim(0, 10)
+
+# Display the plot
+plt.show()
