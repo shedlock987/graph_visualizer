@@ -1,5 +1,7 @@
 import sys
-sys.path.append('/Users/shedlock/projects/rrt_graph_builder/rrtDemo')  # or wherever your .so is
+import os
+import numpy as np
+sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_graph_builder/rrtDemo'))
 import rrtDemo
 
 # Example usage of the exposed VisRRT class (named RRT in Python)
@@ -35,14 +37,12 @@ vis_rrt.initializeRRT(
 )
 
 # Define a simple occupancy map (example obstacles)
-# occp_coords: list of lists, each [x, y]
-# occp_widths: list of widths
-# occp_interval: list of intervals (assuming one per obstacle)
-occp_coords = [[1.0, 1.0], [2.5, 2.5], [3.0, 1.5]]
-occp_widths = [0.5, 0.6, 0.4]
-occp_interval = [1.0, 1.0, 1.0]
+occp_coords = [[float(x), float(y)] for x, y in [[1.0, 1.0], [2.5, 2.5], [3.0, 1.5]]]
+occp_widths = [float(w) for w in [0.5, 0.6, 0.4]]
+occp_interval = [float(i) for i in [1.0, 1.0, 1.0]]
 
 vis_rrt.setOccupancyMap(occp_coords, occp_widths, occp_interval)
+
 
 # Build the RRT tree
 vis_rrt.buildRRT()
