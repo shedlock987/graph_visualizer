@@ -18,21 +18,26 @@ range_b_x = 5.0
 range_b_y = 5.0
 origin_x = 0.0
 origin_y = 0.0
+origin_time = 0.0  # Time for origin
 dest_x = 4.5
 dest_y = 4.5
+dest_time = 10.0   # Time for destination (e.g., max_time)
 max_angle_rad = 0.8
 max_dist = 1.0
 min_dist = 0.5
 max_interval = 2.0
 max_time = 10.0
-dim_3D = False
+dim_3D = True
 node_limit = 10000
 
+# UPDATED: Use tuples (coordinate_t) for ranges, origin, dest in initializeRRT
+range_a = (range_a_x, range_a_y, 0.0)  # Time=0 for range_a (ignored in extraction)
+range_b = (range_b_x, range_b_y, 0.0)  # Time=0 for range_b
+origin = (origin_x, origin_y, origin_time)
+dest = (dest_x, dest_y, dest_time)
+
 vis_rrt.initializeRRT(
-    range_a_x, range_a_y,
-    range_b_x, range_b_y,
-    origin_x, origin_y,
-    dest_x, dest_y,
+    range_a, range_b, origin, dest,
     max_angle_rad, max_dist,
     min_dist, max_interval,
     max_time, dim_3D, node_limit
@@ -42,7 +47,6 @@ vis_rrt.initializeRRT(
 occp_coords = [[float(x), float(y)] for x, y in [[1.0, 1.0], [2.5, 2.5], [3.0, 1.5]]]
 occp_widths = [float(w) for w in [0.5, 0.6, 0.4]]
 occp_interval = [float(i) for i in [1.0, 1.0, 1.0]]
-
 vis_rrt.setOccupancyMap(occp_coords, occp_widths, occp_interval)
 
 # Build the RRT tree step by step
@@ -70,7 +74,7 @@ for i in range(len(occp_coords)):
 ax.scatter(0, 0, 0, color='blue', s=50)
 
 # Plot the destination point
-ax.scatter(dest_x, dest_y, 0, color='green', s=50)
+ax.scatter(dest_x, dest_y, dest_time, color='green', s=50)
 
 # Plot orange points for each node in the graph
 node_xs = []
@@ -79,10 +83,10 @@ node_zs = []
 node_count = vis_rrt.getNodeCount()
 for i in range(node_count):
     node = vis_rrt.getNodeAt(i)
-    if node:  # Check if node is valid (not nullptr)
-        node_xs.append(node.xCrdnt())  # FIXED: Call as method with ()
-        node_ys.append(node.yCrdnt())  # FIXED: Call as method with ()
-        node_zs.append(node.time())    # FIXED: Call as method with ()
+    if node:  # FIXED: Ensure if-statement is inside the loop
+        node_xs.append(node.xCrdnt())  # Call as method with ()
+        node_ys.append(node.yCrdnt())  # Call as method with ()
+        node_zs.append(node.time())    # Call as method with ()
 
 if node_xs:  # Only scatter if there are nodes
     ax.scatter(node_xs, node_ys, node_zs, color='orange', s=20)
@@ -94,8 +98,8 @@ ax.set_zlabel('Time')
 ax.set_title('3D Plot of Occupancy Grid Cells and RRT Nodes')
 
 # Set axis limits (adjusted for the range -5 to 5)
-ax.set_xlim(-6, 6)
-ax.set_ylim(-1, 6)
+ax.set_xlim(0, 6)
+ax.set_ylim(0, 6)
 ax.set_zlim(0, 10)
 
 # Display the plot
