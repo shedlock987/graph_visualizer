@@ -8,7 +8,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_graph_builder/rr
 import rrtDemo
 
 # Example usage of the exposed VisRRT class (named RRT in Python)
-
 # Initialize with default constructor
 vis_rrt = rrtDemo.RRT()
 
@@ -46,7 +45,6 @@ occp_interval = [float(i) for i in [1.0, 1.0, 1.0]]
 
 vis_rrt.setOccupancyMap(occp_coords, occp_widths, occp_interval)
 
-
 # Build the RRT tree step by step
 while not vis_rrt.isComplete():
     vis_rrt.stepRRT()
@@ -71,15 +69,33 @@ for i in range(len(occp_coords)):
 # Plot a blue dot at the origin (0,0,0)
 ax.scatter(0, 0, 0, color='blue', s=50)
 
+# Plot the destination point
+ax.scatter(dest_x, dest_y, 0, color='green', s=50)
+
+# Plot orange points for each node in the graph
+node_xs = []
+node_ys = []
+node_zs = []
+node_count = vis_rrt.getNodeCount()
+for i in range(node_count):
+    node = vis_rrt.getNodeAt(i)
+    if node:  # Check if node is valid (not nullptr)
+        node_xs.append(node.xCrdnt())  # FIXED: Call as method with ()
+        node_ys.append(node.yCrdnt())  # FIXED: Call as method with ()
+        node_zs.append(node.time())    # FIXED: Call as method with ()
+
+if node_xs:  # Only scatter if there are nodes
+    ax.scatter(node_xs, node_ys, node_zs, color='orange', s=20)
+
 # Set labels and title
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Time')
-ax.set_title('3D Plot of Occupancy Grid Cells')
+ax.set_title('3D Plot of Occupancy Grid Cells and RRT Nodes')
 
-# Set axis limits
-ax.set_xlim(0, 10)
-ax.set_ylim(0, 10)
+# Set axis limits (adjusted for the range -5 to 5)
+ax.set_xlim(-6, 6)
+ax.set_ylim(-1, 6)
 ax.set_zlim(0, 10)
 
 # Display the plot
