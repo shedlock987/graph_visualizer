@@ -4,10 +4,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
-import pandas as pd  # NEW: For CSV export
-
 sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_graph_builder/rrtDemo'))
 import rrtDemo
+
+# Enable/disable GIF rendering
+render_gif = False
 
 # Example usage of the exposed VisRRT class (named RRT in Python)
 # Initialize with default constructor
@@ -15,29 +16,28 @@ vis_rrt = rrtDemo.RRT()
 
 # Set up parameters for the RRT
 range_a_x = -5.0
-range_a_y = 0.0
+range_a_y = -5.0
 range_b_x = 5.0
 range_b_y = 5.0
 origin_x = 0.0
 origin_y = 0.0
-origin_time = 0.0 # Time for origin
+origin_time = 0.0  # Time for origin
 dest_x = 4.5
 dest_y = 4.5
-dest_time = 10.0 # Time for destination (e.g., max_time)
-max_angle_rad = 0.8
+dest_time = 10.0  # Time for destination (e.g., max_time)
+max_angle_rad = 0.2
 max_dist = 1.0
 min_dist = 0.5
-max_interval = 2.0
+max_interval = 0.5
 max_time = 10.0
 dim_3D = True
-node_limit = 10000
+node_limit = 1000
 
 # UPDATED: Use tuples (coordinate_t) for ranges, origin, dest in initializeRRT
-range_a = (range_a_x, range_a_y, 0.0) # Time=0 for range_a (ignored in extraction)
-range_b = (range_b_x, range_b_y, 0.0) # Time=0 for range_b
+range_a = (range_a_x, range_a_y, 0.0)  # Time=0 for range_a (ignored in extraction)
+range_b = (range_b_x, range_b_y, 0.0)  # Time=0 for range_b
 origin = (origin_x, origin_y, origin_time)
 dest = (dest_x, dest_y, dest_time)
-
 vis_rrt.initializeRRT(
     range_a, range_b, origin, dest,
     max_angle_rad, max_dist,
@@ -59,129 +59,123 @@ while not vis_rrt.isComplete():
 print("RRT build complete:", vis_rrt.isComplete())
 print("Number of nodes:", vis_rrt.getNodeCount())
 
-# NEW: Collect data for CSV export
-node_data = []
+# Collect node positions and forward connections
 node_count = vis_rrt.getNodeCount()
-max_fwd = 0
-fwd_dict = {}  # Cache forward indices to avoid repeated calls
+all_node_xs = []
+all_node_ys = []
+all_node_zs = []
+fwd_dict = {}
 for i in range(node_count):
     node = vis_rrt.getNodeAt(i)
     if node:
         x = node.xCrdnt()
         y = node.yCrdnt()
         t = node.time()
+        all_node_xs.append(x)
+        all_node_ys.append(y)
+        all_node_zs.append(t)
         fwd_indices = vis_rrt.getForwardIndices(i)
-        fwd_list = list(fwd_indices)  # Convert to list
-        fwd_dict[i] = fwd_list
-        max_fwd = max(max_fwd, len(fwd_list))
-        node_data.append([i, x, y, t] + fwd_list)
-
-# Add origin (node 0, already included) - no special handling needed
-# Add destination as extra row (ID = -1, no forwards)
-node_data.append([-1, dest_x, dest_y, dest_time] + [None] * max_fwd)
-
-# Create DataFrame
-columns = ['node_id', 'x', 'y', 'time'] + [f'forward_id_{j+1}' for j in range(max_fwd)]
-df = pd.DataFrame(node_data, columns=columns)
-
-# Write to CSV
-df.to_csv('rrt_nodes.csv', index=False)
-print("Exported nodes to rrt_nodes.csv")
-
-# Collect all node positions in addition order (exclude dest for plotting/animation)
-all_node_xs = [row[1] for row in node_data[:-1]]  # Exclude dest row
-all_node_ys = [row[2] for row in node_data[:-1]]
-all_node_zs = [row[3] for row in node_data[:-1]]
+        fwd_dict[i] = list(fwd_indices)
 
 num_frames = len(all_node_xs)
-duration_ms = 15000 # 15 seconds
-interval_ms = max(1, duration_ms // num_frames) # At least 1 ms per frame
+duration_ms = 15000  # 15 seconds
+interval_ms = max(1, duration_ms // num_frames)  # At least 1 ms per frame
 
-# Create the 3D figure for animation (larger size)
-fig_anim = plt.figure(figsize=(19.2, 14.4))
-ax_anim = fig_anim.add_subplot(111, projection='3d')
+# Render GIF animation if enabled
+if render_gif:
+    # Create the 3D figure for animation (larger size)
+    fig_anim = plt.figure(figsize=(19.2, 14.4))
+    ax_anim = fig_anim.add_subplot(111, projection='3d')
 
-# Static elements data (for replotting in each frame)
-obstacle_data = []
-for i in range(len(occp_coords)):
-    x = occp_coords[i][0]
-    y = occp_coords[i][1]
-    w = occp_widths[i]
-    h = occp_interval[i]
-    obstacle_data.append((x - w / 2, y - w / 2, 0, w, w, h))
+    # Static elements data (for replotting in each frame)
+    obstacle_data = []
+    for i in range(len(occp_coords)):
+        x = occp_coords[i][0]
+        y = occp_coords[i][1]
+        w = occp_widths[i]
+        h = occp_interval[i]
+        obstacle_data.append((x - w / 2, y - w / 2, 0, w, w, h))
 
-def animate(frame):
-    ax_anim.cla()
-    # Replot obstacles
-    for x_start, y_start, z_start, dx, dy, dz in obstacle_data:
-        ax_anim.bar3d(x_start, y_start, z_start, dx, dy, dz, shade=True, color='red', alpha=0.8)
-    # Replot origin and destination
-    ax_anim.scatter(0, 0, 0, color='blue', s=50)
-    ax_anim.scatter(dest_x, dest_y, dest_time, color='green', s=50)
-    # Plot nodes up to current frame
-    current_xs = all_node_xs[:frame + 1]
-    current_ys = all_node_ys[:frame + 1]
-    current_zs = all_node_zs[:frame + 1]
-    if current_xs:
-        ax_anim.scatter(current_xs, current_ys, current_zs, color='orange', s=20)
-    # Draw blue lines for forward connections where both nodes are visible
-    for i in range(frame + 1):
-        fwd_indices = fwd_dict.get(i, [])  # Use cached
-        x1, y1, z1 = all_node_xs[i], all_node_ys[i], all_node_zs[i]
-        for fwd_idx in fwd_indices:
-            if fwd_idx <= frame:  # Only draw if forward node is already added
-                x2, y2, z2 = all_node_xs[fwd_idx], all_node_ys[fwd_idx], all_node_zs[fwd_idx]
-                ax_anim.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
-    # Set labels, title, limits
-    ax_anim.set_xlabel('X')
-    ax_anim.set_ylabel('Y')
-    ax_anim.set_zlabel('Time')
-    ax_anim.set_title('3D Animation of RRT Node Placement')
-    ax_anim.set_xlim(0, 6)
-    ax_anim.set_ylim(0, 6)
-    ax_anim.set_zlim(0, 10)
+    def animate(frame):
+        ax_anim.cla()
+        # Replot obstacles
+        for x_start, y_start, z_start, dx, dy, dz in obstacle_data:
+            ax_anim.bar3d(x_start, y_start, z_start, dx, dy, dz, shade=True, color='red', alpha=0.8)
+        # Replot origin and destination
+        ax_anim.scatter(0, 0, 0, color='blue', s=50)
+        ax_anim.scatter(dest_x, dest_y, dest_time, color='green', s=50)
+        # Plot nodes up to current frame
+        current_xs = all_node_xs[:frame + 1]
+        current_ys = all_node_ys[:frame + 1]
+        current_zs = all_node_zs[:frame + 1]
+        if current_xs:
+            ax_anim.scatter(current_xs, current_ys, current_zs, color='orange', s=20)
+        # Draw blue lines for forward connections where both nodes are visible
+        for i in range(frame + 1):
+            fwd_list = fwd_dict.get(i, [])  # Use cached
+            x1, y1, z1 = all_node_xs[i], all_node_ys[i], all_node_zs[i]
+            for fwd_idx in fwd_list:
+                if fwd_idx <= frame:  # Only draw if forward node is already added
+                    x2, y2, z2 = all_node_xs[fwd_idx], all_node_ys[fwd_idx], all_node_zs[fwd_idx]
+                    ax_anim.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
+        # Set labels, title, limits
+        ax_anim.set_xlabel('X')
+        ax_anim.set_ylabel('Y')
+        ax_anim.set_zlabel('Time')
+        ax_anim.set_title('3D Animation of RRT Node Placement')
+        ax_anim.set_xlim(0, 6)
+        ax_anim.set_ylim(0, 6)
+        ax_anim.set_zlim(0, 10)
 
-# Create and save the animation as GIF
-anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
-anim.save('rrt_animation.gif', writer='pillow')
+    # Create and save the animation as GIF
+    anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
+    anim.save('rrt_animation.gif', writer='pillow')
 
 # Create the static 3D plot (larger size)
 fig = plt.figure(figsize=(19.2, 14.4))
 ax = fig.add_subplot(111, projection='3d')
+
 # Plot each occupancy grid cell as a rectangular prism (assuming square base in XY, height along Z)
 for i in range(len(occp_coords)):
     x = occp_coords[i][0]
     y = occp_coords[i][1]
-    w = occp_widths[i] # width (side length in X and Y)
-    h = occp_interval[i] # height (along Z)
+    w = occp_widths[i]  # width (side length in X and Y)
+    h = occp_interval[i]  # height (along Z)
     # bar3d(x, y, z, dx, dy, dz) where (x,y,z) is the bottom-left corner
     ax.bar3d(x - w / 2, y - w / 2, 0, w, w, h, shade=True, color='red', alpha=0.8)
+
 # Plot a blue dot at the origin (0,0,0)
 ax.scatter(0, 0, 0, color='blue', s=50)
+
 # Plot the destination point
 ax.scatter(dest_x, dest_y, dest_time, color='green', s=50)
+
 # Plot orange points for each node in the graph
 node_xs = all_node_xs  # Reuse
 node_ys = all_node_ys
 node_zs = all_node_zs
-if node_xs: # Only scatter if there are nodes
+if node_xs:  # Only scatter if there are nodes
     ax.scatter(node_xs, node_ys, node_zs, color='orange', s=20)
+
 # Draw blue lines for all forward connections
 for i in range(node_count):
-    fwd_indices = fwd_dict.get(i, [])
+    fwd_list = fwd_dict.get(i, [])
     x1, y1, z1 = node_xs[i], node_ys[i], node_zs[i]
-    for fwd_idx in fwd_indices:
+    for fwd_idx in fwd_list:
         if fwd_idx < node_count:  # Ensure valid index
             x2, y2, z2 = node_xs[fwd_idx], node_ys[fwd_idx], node_zs[fwd_idx]
             ax.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
+
 # Set labels and title
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Time')
 ax.set_title('3D Plot of Occupancy Grid Cells and RRT Nodes')
+
 # Set axis limits (adjusted for the range -5 to 5)
 ax.set_xlim(0, 6)
 ax.set_ylim(0, 6)
 ax.set_zlim(0, 10)
+
 # Display the plot
 plt.show()
