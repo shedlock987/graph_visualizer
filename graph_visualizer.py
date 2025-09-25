@@ -34,10 +34,10 @@ dim_3D = True
 node_limit = 1000
 
 # UPDATED: Use tuples (coordinate_t) for ranges, origin, dest in initializeRRT
-range_a = (range_a_x, range_a_y, 0.0)  # Time=0 for range_a (ignored in extraction)
-range_b = (range_b_x, range_b_y, 0.0)  # Time=0 for range_b
-origin = (origin_x, origin_y, origin_time)
-dest = (dest_x, dest_y, dest_time)
+range_a = (range_a_x, range_a_y, 0.0, 0.0)  # Time=0 for range_a (ignored in extraction)
+range_b = (range_b_x, range_b_y, 0.0, 0.0)  # Time=0 for range_b
+origin = (origin_x, origin_y, origin_time, 0.0)
+dest = (dest_x, dest_y, dest_time, 0.0)
 vis_rrt.initializeRRT(
     range_a, range_b, origin, dest,
     max_angle_rad, max_dist,
