@@ -25,18 +25,19 @@ origin_time = 0.0  # Time for origin
 dest_x = 4.5
 dest_y = 4.5
 dest_time = 10.0  # Time for destination (e.g., max_time)
-max_angle_rad = 0.2
-max_dist = 1.0
+max_angle_rad = 0.4
+max_dist = 2.0
 min_dist = 0.5
-max_interval = 0.5
+max_interval = 3
 max_time = 10.0
 dim_3D = True
 node_limit = 1000
+initial_heading = 0.785
 
 # UPDATED: Use tuples (coordinate_t) for ranges, origin, dest in initializeRRT
 range_a = (range_a_x, range_a_y, 0.0, 0.0)  # Time=0 for range_a (ignored in extraction)
 range_b = (range_b_x, range_b_y, 0.0, 0.0)  # Time=0 for range_b
-origin = (origin_x, origin_y, origin_time, 0.0)
+origin = (origin_x, origin_y, origin_time, initial_heading)
 dest = (dest_x, dest_y, dest_time, 0.0)
 vis_rrt.initializeRRT(
     range_a, range_b, origin, dest,
@@ -84,7 +85,7 @@ interval_ms = max(1, duration_ms // num_frames)  # At least 1 ms per frame
 # Render GIF animation if enabled
 if render_gif:
     # Create the 3D figure for animation (larger size)
-    fig_anim = plt.figure(figsize=(19.2, 14.4))
+    fig_anim = plt.figure(figsize=(12.8, 9.6))
     ax_anim = fig_anim.add_subplot(111, projection='3d')
 
     # Static elements data (for replotting in each frame)
