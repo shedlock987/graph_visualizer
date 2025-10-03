@@ -20,13 +20,13 @@ origin_time = 0.0 # Time for origin
 dest_x = 4.5
 dest_y = 4.5
 dest_time = 10.0 # Time for destination (e.g., max_time)
-max_angle_rad = 0.1
+max_angle_rad = 0.35
 max_dist = 2.0
 min_dist = 0.5
 max_interval = 1.5
 max_time = 10.0
 dim_3D = True
-iteration_limit = 5000
+iteration_limit = 2000
 initial_heading = 0.785
 # Use tuples (pose_t) for ranges, origin, dest
 range_a = (range_a_x, range_a_y, 0.0, 0.0) # Time=0 for range_a (ignored in extraction)
@@ -46,7 +46,7 @@ vis_rrt = rrtDemo.RRT(occupancy_map, range_a, range_b, origin, dest,
                       min_dist, max_interval,
                       max_time, dim_3D, iteration_limit, initial_heading)
 
-vis_rrt.updateInitialHeading(initial_heading)
+#vis_rrt.updateInitialHeading(initial_heading)
 
 # Build the RRT tree step by step
 while not vis_rrt.isComplete():
@@ -77,7 +77,7 @@ interval_ms = max(1, duration_ms // num_frames) # At least 1 ms per frame
 # Render GIF animation if enabled
 if render_gif:
     # Create the 3D figure for animation (larger size)
-    fig_anim = plt.figure(figsize=(12.8, 9.6))
+    fig_anim = plt.figure(figsize=(6.4, 4.8))
     ax_anim = fig_anim.add_subplot(111, projection='3d')
     # Static elements data (for replotting in each frame)
     obstacle_data = []
@@ -123,7 +123,7 @@ if render_gif:
     anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
     anim.save('rrt_animation.gif', writer='pillow')
 # Create the static 3D plot (larger size)
-fig = plt.figure(figsize=(19.2, 14.4))
+fig = plt.figure(figsize=(9.6, 7.2))
 ax = fig.add_subplot(111, projection='3d')
 
 # Plot each occupancy grid cell as a rectangular prism (assuming square base in XY, height along Z)
@@ -172,5 +172,5 @@ for i in range(node_count):
         if abs(x - dest_x) <= abs(dest_x) * xy_tol and abs(y - dest_y) <= abs(dest_y) * xy_tol:
             count_at_dest_xy += 1
 
-print(f"Number of nodes at (x, y) ≈ ({dest_x}, {dest_y}) within 1% error: {count_at_dest_xy}")
+print(f"Number of nodes at (x, y) ≈ ({dest_x}, {dest_y}) within {xy_tol*100}% error: {count_at_dest_xy}")
 
