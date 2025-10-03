@@ -28,7 +28,7 @@ max_time = 10.0
 dim_3D = True
 iteration_limit = 500
 initial_heading = 0.785
-# Use tuples (coordinate_t) for ranges, origin, dest
+# Use tuples (pose_t) for ranges, origin, dest
 range_a = (range_a_x, range_a_y, 0.0, 0.0) # Time=0 for range_a (ignored in extraction)
 range_b = (range_b_x, range_b_y, 0.0, 0.0) # Time=0 for range_b
 origin = (origin_x, origin_y, origin_time, initial_heading)
@@ -39,10 +39,13 @@ vis_rrt = rrtDemo.RRT(range_a, range_b, origin, dest,
                       min_dist, max_interval,
                       max_time, dim_3D, iteration_limit, initial_heading)
 # Define a simple occupancy map (example obstacles)
-occp_coords = [[float(x), float(y)] for x, y in [[1.0, 0.0], [1.0, 1.0], [2.5, 2.5], [3.0, 1.5]]]
-occp_widths = [float(w) for w in [1.0, 0.5, 2.0, 0.4]]
-occp_interval = [float(i) for i in [1.0, 2.0, 4.0, 1.0]]
+occp_coords = [[float(x), float(y)] for x, y in [[1.0, 1.0], [2.5, 2.5], [3.0, 1.5]]]
+occp_widths = [float(w) for w in [0.5, 2.0, 0.4]]
+occp_interval = [float(i) for i in [2.0, 4.0, 1.0]]
 vis_rrt.setOccupancyMap(occp_coords, occp_widths, occp_interval)
+
+vis_rrt.updateInitialHeading(initial_heading)
+
 # Build the RRT tree step by step
 while not vis_rrt.isComplete():
     vis_rrt.stepRRT()
