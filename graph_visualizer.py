@@ -26,23 +26,25 @@ min_dist = 0.5
 max_interval = 1.5
 max_time = 10.0
 dim_3D = True
-iteration_limit = 500
+iteration_limit = 5000
 initial_heading = 0.785
 # Use tuples (pose_t) for ranges, origin, dest
 range_a = (range_a_x, range_a_y, 0.0, 0.0) # Time=0 for range_a (ignored in extraction)
 range_b = (range_b_x, range_b_y, 0.0, 0.0) # Time=0 for range_b
 origin = (origin_x, origin_y, origin_time, initial_heading)
 dest = (dest_x, dest_y, dest_time, 0.0)
-# UPDATED: Initialize directly with constructor (12 args, with separate initial_heading)
-vis_rrt = rrtDemo.RRT(range_a, range_b, origin, dest,
+
+# Define occupancy map as a list of ((x, y, time, heading), width) tuples
+occupancy_map = [
+    ((1.0, 1.0, 2.0, 0.0), 0.5),
+    ((2.5, 2.5, 0.5, 0.0), 2.0),
+    ((3.0, 1.5, 5.0, 0.0), 0.4)
+]
+
+vis_rrt = rrtDemo.RRT(occupancy_map, range_a, range_b, origin, dest,
                       max_angle_rad, max_dist,
                       min_dist, max_interval,
                       max_time, dim_3D, iteration_limit, initial_heading)
-# Define a simple occupancy map (example obstacles)
-occp_coords = [[float(x), float(y)] for x, y in [[1.0, 1.0], [2.5, 2.5], [3.0, 1.5]]]
-occp_widths = [float(w) for w in [0.5, 2.0, 0.4]]
-occp_interval = [float(i) for i in [2.0, 4.0, 1.0]]
-vis_rrt.setOccupancyMap(occp_coords, occp_widths, occp_interval)
 
 vis_rrt.updateInitialHeading(initial_heading)
 
@@ -79,20 +81,22 @@ if render_gif:
     ax_anim = fig_anim.add_subplot(111, projection='3d')
     # Static elements data (for replotting in each frame)
     obstacle_data = []
-    for i in range(len(occp_coords)):
-        x = occp_coords[i][0]
-        y = occp_coords[i][1]
-        w = occp_widths[i]
-        h = occp_interval[i]
+
+    for occ in occupancy_map:
+        (x, y, z, heading), w = occ
+        h = max_time  # or use a fixed height if you want, or z if you want to use the time from the tuple
         obstacle_data.append((x - w / 2, y - w / 2, 0, w, w, h))
     def animate(frame):
         ax_anim.cla()
         # Replot obstacles
         for x_start, y_start, z_start, dx, dy, dz in obstacle_data:
             ax_anim.bar3d(x_start, y_start, z_start, dx, dy, dz, shade=True, color='red', alpha=0.8)
+
         # Replot origin and destination
         ax_anim.scatter(0, 0, 0, color='blue', s=50)
-        ax_anim.scatter(dest_x, dest_y, dest_time, color='green', s=50)
+
+        # Plot a vertical green line at the destination (orthogonal to z/time plane)
+        ax_anim.plot([dest_x, dest_x], [dest_y, dest_y], [0, dest_time], color='green', linewidth=3)
         # Plot nodes up to current frame
         current_xs = all_node_xs[:frame + 1]
         current_ys = all_node_ys[:frame + 1]
@@ -121,18 +125,16 @@ if render_gif:
 # Create the static 3D plot (larger size)
 fig = plt.figure(figsize=(19.2, 14.4))
 ax = fig.add_subplot(111, projection='3d')
+
 # Plot each occupancy grid cell as a rectangular prism (assuming square base in XY, height along Z)
-for i in range(len(occp_coords)):
-    x = occp_coords[i][0]
-    y = occp_coords[i][1]
-    w = occp_widths[i] # width (side length in X and Y)
-    h = occp_interval[i] # height (along Z)
-    # bar3d(x, y, z, dx, dy, dz) where (x,y,z) is the bottom-left corner
+for occ in occupancy_map:
+    (x, y, z, heading), w = occ
+    h = z  # Use the z (time) value from the tuple as the height of the prism
     ax.bar3d(x - w / 2, y - w / 2, 0, w, w, h, shade=True, color='red', alpha=0.8)
 # Plot a blue dot at the origin (0,0,0)
 ax.scatter(0, 0, 0, color='blue', s=50)
-# Plot the destination point
-ax.scatter(dest_x, dest_y, dest_time, color='green', s=50)
+# Plot a vertical green line at the destination (orthogonal to z/time plane)
+ax.plot([dest_x, dest_x], [dest_y, dest_y], [0, dest_time], color='green', linewidth=3)
 # Plot orange points for each node in the graph
 node_xs = all_node_xs # Reuse
 node_ys = all_node_ys
@@ -158,3 +160,17 @@ ax.set_ylim(-6, 6)
 ax.set_zlim(0, 12)
 # Display the plot
 plt.show()
+# Count how many nodes share the same x, y as the destination (within 1% error)
+xy_tol = 0.05 # 1% tolerance
+count_at_dest_xy = 0
+for i in range(node_count):
+    node = vis_rrt.getNodeAt(i)
+    if node:
+        x = node.xCrdnt()
+        y = node.yCrdnt()
+        # Check if x and y are within xy_tol% of dest_x and dest_y
+        if abs(x - dest_x) <= abs(dest_x) * xy_tol and abs(y - dest_y) <= abs(dest_y) * xy_tol:
+            count_at_dest_xy += 1
+
+print(f"Number of nodes at (x, y) ≈ ({dest_x}, {dest_y}) within 1% error: {count_at_dest_xy}")
+
