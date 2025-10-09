@@ -39,10 +39,14 @@ occupancy_map = [
     ((2.5, 2.5, 2.0, 0.0), 2.0),
     ((3.0, 1.5, 12.0, 0.0), 0.4)
 ]
-vis_rrt = rrtDemo.RRT(occupancy_map, range_a, range_b, origin, dest,
-max_angle_rad, max_dist,
-min_dist, max_interval,
-max_time, dim_3D, iteration_limit)
+max_admissible = 1  # New parameter for admissible trajectories
+vis_rrt = rrtDemo.RRT(
+    occupancy_map, range_a, range_b, origin, dest,
+    max_angle_rad, max_dist,
+    min_dist, max_interval,
+    max_time, dim_3D, iteration_limit,
+    max_admissible  # <-- add this argument
+)
 
 #vis_rrt.updateInitialHeading(initial_heading)
 # Build the RRT tree step by step
