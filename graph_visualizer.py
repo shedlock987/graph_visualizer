@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_graph_builder/rrtDemo'))
 import rrtDemo
 # Enable/disable GIF rendering
-render_gif = False
+render_gif = True
 # Example usage of the exposed VisRRT class (named RRT in Python)
 # Set up parameters for the RRT
 range_a_x = -5.0
@@ -39,7 +39,7 @@ occupancy_map = [
     ((2.5, 2.5, 2.0, 0.0), 2.0),
     ((3.0, 1.5, 12.0, 0.0), 0.4)
 ]
-max_admissible = 1  # New parameter for admissible trajectories
+max_admissible = 4  # New parameter for admissible trajectories
 vis_rrt = rrtDemo.RRT(
     occupancy_map, range_a, range_b, origin, dest,
     max_angle_rad, max_dist,
@@ -128,8 +128,15 @@ if render_gif:
                     x2, y2, z2 = all_node_xs[fwd_idx], all_node_ys[fwd_idx], all_node_zs[fwd_idx]
                     ax_anim.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
         # If admissible, plot a large green dot at the last node
-        if vis_rrt.isAdmissible() and last_x is not None:
-            ax_anim.scatter(last_x, last_y, last_z, color='green', s=60)  # 3x as big as orange (s=20)
+        last_idx = frame if frame < node_count else node_count - 1
+        last_node = vis_rrt.getNodeAt(last_idx)
+        if last_node:
+            last_x = last_node.xCrdnt()
+            last_y = last_node.yCrdnt()
+            last_z = last_node.time()
+            admissible = vis_rrt.isAdmissible(last_node)
+            if admissible:
+                ax_anim.scatter(last_x, last_y, last_z, color='green', s=60)
         # Set labels, title, limits
         ax_anim.set_xlabel('X')
         ax_anim.set_ylabel('Y')
