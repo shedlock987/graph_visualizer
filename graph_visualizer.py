@@ -26,7 +26,7 @@ min_dist = 0.5
 max_interval = 1.5
 max_time = 10.0
 dim_3D = True
-iteration_limit = 4000
+iteration_limit = 1000
 initial_heading = 0.78 # Initial heading in radians (e.g., 45 degrees)
 # Use tuples (pose_t) for ranges, origin, dest
 range_a = (range_a_x, range_a_y, 0.0, 0.0) # Time=0 for range_a (ignored in extraction)
@@ -187,15 +187,93 @@ ax.set_ylim(-6, 6)
 ax.set_zlim(0, 12)
 # Display the plot
 plt.show()
-# Count how many nodes share the same x, y as the destination (within 1% error)
-xy_tol = 0.05 # 1% tolerance
-count_at_dest_xy = 0
+# Find all nodes at (dest_x, dest_y) within tolerance
+xy_tol = 0.01  # 1% tolerance
+green_indices = []
 for i in range(node_count):
     node = vis_rrt.getNodeAt(i)
     if node:
         x = node.xCrdnt()
         y = node.yCrdnt()
-        # Check if x and y are within xy_tol% of dest_x and dest_y
         if abs(x - dest_x) <= abs(dest_x) * xy_tol and abs(y - dest_y) <= abs(dest_y) * xy_tol:
-            count_at_dest_xy += 1
-print(f"Number of nodes at (x, y) ≈ ({dest_x}, {dest_y}) within {xy_tol*100}% error: {count_at_dest_xy}")
+            green_indices.append(i)
+
+# --- GIF Animation ---
+if render_gif:
+    fig_anim = plt.figure(figsize=(6.4, 4.8))
+    ax_anim = fig_anim.add_subplot(111, projection='3d')
+    obstacle_data = []
+    for occ in occupancy_map:
+        (x, y, z, heading), w = occ
+        h = z
+        obstacle_data.append((x - w / 2, y - w / 2, 0, w, w, h))
+    def animate(frame):
+        ax_anim.cla()
+        # Replot obstacles
+        for x_start, y_start, z_start, dx, dy, dz in obstacle_data:
+            ax_anim.bar3d(x_start, y_start, z_start, dx, dy, dz, shade=True, color='red', alpha=0.8)
+        # Plot a blue dot at the first node
+        ax_anim.scatter(first_x, first_y, first_z, color='blue', s=50)
+        # Plot a vertical green line at the destination
+        ax_anim.plot([dest_x, dest_x], [dest_y, dest_y], [0, dest_time], color='green', linewidth=3)
+        # Plot orange points for each node up to current frame
+        current_xs = all_node_xs[:frame + 1]
+        current_ys = all_node_ys[:frame + 1]
+        current_zs = all_node_zs[:frame + 1]
+        if current_xs:
+            ax_anim.scatter(current_xs, current_ys, current_zs, color='orange', s=20)
+        # Draw blue lines for forward connections where both nodes are visible
+        for i in range(frame + 1):
+            fwd_list = fwd_dict.get(i, [])
+            x1, y1, z1 = all_node_xs[i], all_node_ys[i], all_node_zs[i]
+            for fwd_idx in fwd_list:
+                if fwd_idx <= frame:
+                    x2, y2, z2 = all_node_xs[fwd_idx], all_node_ys[fwd_idx], all_node_zs[fwd_idx]
+                    ax_anim.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
+        # Plot large green dots for all nodes at (dest_x, dest_y)
+        for idx in green_indices:
+            if idx <= frame:
+                ax_anim.scatter(all_node_xs[idx], all_node_ys[idx], all_node_zs[idx], color='green', s=60)
+        # Set labels, title, limits
+        ax_anim.set_xlabel('X')
+        ax_anim.set_ylabel('Y')
+        ax_anim.set_zlabel('Time')
+        ax_anim.set_title('3D Animation of RRT Node Placement')
+        ax_anim.set_xlim(-6, 6)
+        ax_anim.set_ylim(-6, 6)
+        ax_anim.set_zlim(0, 12)
+    anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
+    anim.save('rrt_animation.gif', writer='pillow')
+
+# --- Static Plot ---
+fig = plt.figure(figsize=(9.6, 7.2))
+ax = fig.add_subplot(111, projection='3d')
+for occ in occupancy_map:
+    (x, y, z, heading), w = occ
+    h = z
+    ax.bar3d(x - w / 2, y - w / 2, 0, w, w, h, shade=True, color='red', alpha=0.8)
+ax.scatter(first_x, first_y, first_z, color='blue', s=50)
+ax.plot([dest_x, dest_x], [dest_y, dest_y], [0, dest_time], color='green', linewidth=3)
+node_xs = all_node_xs
+node_ys = all_node_ys
+node_zs = all_node_zs
+if node_xs:
+    ax.scatter(node_xs, node_ys, node_zs, color='orange', s=20)
+for i in range(node_count):
+    fwd_list = fwd_dict.get(i, [])
+    x1, y1, z1 = node_xs[i], node_ys[i], node_zs[i]
+    for fwd_idx in fwd_list:
+        if fwd_idx < node_count:
+            x2, y2, z2 = node_xs[fwd_idx], node_ys[fwd_idx], node_zs[fwd_idx]
+            ax.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
+# Plot large green dots for all nodes at (dest_x, dest_y)
+for idx in green_indices:
+    ax.scatter(node_xs[idx], node_ys[idx], node_zs[idx], color='green', s=60)
+ax.set_xlabel('X')
+ax.set_ylabel('Y')
+ax.set_zlabel('Time')
+ax.set_title('3D Plot of Occupancy Grid Cells and RRT Nodes')
+ax.set_xlim(-6, 6)
+ax.set_ylim(-6, 6)
+ax.set_zlim(0, 12)
+plt.show()
