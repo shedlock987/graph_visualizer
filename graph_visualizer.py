@@ -7,8 +7,10 @@ import matplotlib.animation as animation
 import matplotlib.image as mpimg
 sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_graph_builder/rrtDemo'))
 import rrtDemo
+
 # Enable/disable GIF rendering
 render_gif = False
+
 # Example usage of the exposed VisRRT class (named RRT in Python)
 # Set up parameters for the RRT
 range_a_x = -5.0
@@ -17,10 +19,10 @@ range_b_x = 5.0
 range_b_y = 5.0
 origin_x = -5.0
 origin_y = 0.0
-origin_time = 0.0 # Time for origin
+origin_time = 0.0  # Time for origin
 dest_x = 4.5
-dest_y = 4.5
-dest_time = 10.0 # Time for destination (e.g., max_time)
+dest_y = 2.5
+dest_time = 10.0  # Time for destination (e.g., max_time)
 max_angle_rad = 0.3
 max_dist = 2.0
 min_dist = 0.5
@@ -28,13 +30,15 @@ max_interval = 1.5
 max_time = 10.0
 dim_3D = True
 iteration_limit = 500
-initial_heading = 0.78 # Initial heading in radians (e.g., 45 degrees)
+initial_heading = 0.6  
 max_admissible = 7
+
 # Use tuples (pose_t) for ranges, origin, dest
-range_a = (range_a_x, range_a_y, 0.0, 0.0) # Time=0 for range_a (ignored in extraction)
-range_b = (range_b_x, range_b_y, max_time, 0.0) # Time=0 for range_b
+range_a = (range_a_x, range_a_y, 0.0, 0.0)  # Time=0 for range_a (ignored in extraction)
+range_b = (range_b_x, range_b_y, max_time, 0.0)  # Time=0 for range_b
 origin = (origin_x, origin_y, origin_time, initial_heading)
 dest = (dest_x, dest_y, dest_time, 0.0)
+
 # Define occupancy map as a list of ((x, y, time, heading), width) tuples
 # Add boxes with time (z) determined by the slope, width=0.5, height=1, centroid along the slope line
 # x(y) = -2, y in [-5, 5], 3x density, slope of 16, height of 1
@@ -43,7 +47,7 @@ occupancy_map = [
     ((1.0, 4.0, 12.0, 0.0), 0.4)
 ]
 for y in np.linspace(-5, 5, num=33):  # 33 boxes for 3x density
-    z_centroid = 1.0 + 8 * (y + 5) / 10  # slope line for centroid, slope reduced from 12 to 8
+    z_centroid = 1.0 + 4 * (y + 5) / 10  # slope line for centroid, slope reduced by half from 8 to 4
     occupancy_map.append(((-2.0, y, z_centroid, 0.0), 0.5))  # z_centroid is the center, box height is always 1
 
 vis_rrt = rrtDemo.RRT(
@@ -54,13 +58,14 @@ vis_rrt = rrtDemo.RRT(
     max_admissible  # <-- add this argument
 )
 
-#vis_rrt.updateInitialHeading(initial_heading)
+# vis_rrt.updateInitialHeading(initial_heading)
 # Build the RRT tree step by step
 while not vis_rrt.isComplete():
     vis_rrt.stepRRT()
+
 # Check results
 print("RRT build complete:", vis_rrt.isComplete())
-print("Number of nodes:", vis_rrt.getNodeCount() - 2) # Exclude origin and dest
+print("Number of nodes:", vis_rrt.getNodeCount() - 2)  # Exclude origin and dest
 
 # Get the coordinates of the first node in vis_rrt
 first_node = vis_rrt.getNodeAt(0)
@@ -88,9 +93,11 @@ for i in range(node_count):
         all_node_zs.append(t)
         fwd_indices = vis_rrt.getForwardIndices(i)
         fwd_dict[i] = list(fwd_indices)
+
 num_frames = len(all_node_xs)
-duration_ms = 15000 # 15 seconds
-interval_ms = max(1, duration_ms // num_frames) # At least 1 ms per frame
+duration_ms = 15000  # 15 seconds
+interval_ms = max(1, duration_ms // num_frames)  # At least 1 ms per frame
+
 # Get the last node and check admissibility
 last_node = vis_rrt.getNodeAt(node_count - 1)
 if last_node:
@@ -122,20 +129,26 @@ if render_gif:
     obstacle_data = []
     for occ in occupancy_map:
         (x, y, z, heading), w = occ
-        h = z # Use the z (time) value from the tuple as the height of the prism
+        h = z  # Use the z (time) value from the tuple as the height of the prism
         obstacle_data.append((x - w / 2, y - w / 2, 0, w, w, h))
-    # Load the image
-    img = mpimg.imread("rrt_plot.jpeg")  # Use your JPG filename
 
-    # Set desired image height in plot
-    img_height = 2.0  # Height in plot units
-    img_width = img.shape[1] / img.shape[0] * img_height  # Scale width proportionally
+    # Load the PNG image with transparency
+    img = mpimg.imread("blue_man.png")
+    if img.dtype == np.uint8:
+        img = img.astype(np.float32) / 255.0
 
-    # Define the location and size for the image "billboard"
-    img_x = np.linspace(-1, -1 + img_width, img.shape[1])
-    img_y = np.linspace(-5, -5 + img_height, img.shape[0])
-    img_x, img_y = np.meshgrid(img_x, img_y)
-    img_z = np.zeros_like(img_x)  # z=0 for the bottom
+    # Handle flips (including alpha)
+    img = np.flipud(img)
+
+
+    # Same sizing/positioning as static plot
+    img_height = 4
+    img_width = img.shape[1] / img.shape[0] * img_height
+    fixed_x = -2.2
+    img_y = np.linspace(-5 - 1, -5 + img_width - 1, img.shape[1])  # Shift y by -1
+    img_z = np.linspace(0, img_height, img.shape[0])
+    img_y, img_z = np.meshgrid(img_y, img_z)
+    img_x = np.full_like(img_y, fixed_x)
 
     def animate(frame):
         ax_anim.cla()
@@ -173,11 +186,14 @@ if render_gif:
         ax_anim.set_ylim(-6, 6)
         ax_anim.set_zlim(0, 12)
         ax_anim.view_init(elev=20, azim=-160)  # <-- Rotate view 180 degrees clockwise
+        # Plot with transparency
         ax_anim.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=img, shade=False)
+
     # Create and save the animation as GIF
     anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
     anim.save('rrt_animation.gif', writer='pillow')
-# Find all nodes at (dest_x, dest_y) within a small tolerance
+
+# (Re-)Find all nodes at (dest_x, dest_y) within a small tolerance (in case green_indices was overwritten)
 xy_tol = 1e-2  # tolerance for floating point comparison
 green_indices = []
 for i in range(node_count):
@@ -196,7 +212,8 @@ for occ in occupancy_map:
     (x, y, z, heading), w = occ
     # For the two vertical bars, plot from z=0 up to z=12
     if (x, y, z) == (1.0, 1.0, 12.0) or (x, y, z) == (1.0, 4.0, 12.0):
-        ax.bar3d(x - w / 2, y - w / 2, 0, w, w, z, shade=True, color='red', alpha=0.8)
+        # Reposition by (-5 + 1.5) in x and -2 in y
+        ax.bar3d(x - w / 2 - 3.5, y - w / 2 - 2, 0, w, w, z, shade=True, color='red', alpha=0.8)
     else:
         # For sloped bars, use height 1 centered at z
         h = 1.0
@@ -207,17 +224,17 @@ ax.scatter(first_x, first_y, first_z, color='blue', s=50)
 # Plot a vertical green line at the destination (orthogonal to z/time plane)
 ax.plot([dest_x, dest_x], [dest_y, dest_y], [0, dest_time], color='green', linewidth=3)
 # Plot orange points for each node in the graph
-node_xs = all_node_xs # Reuse
+node_xs = all_node_xs  # Reuse
 node_ys = all_node_ys
 node_zs = all_node_zs
-if node_xs: # Only scatter if there are nodes
+if node_xs:  # Only scatter if there are nodes
     ax.scatter(node_xs, node_ys, node_zs, color='orange', s=20)
 # Draw blue lines for all forward connections
 for i in range(node_count):
     fwd_list = fwd_dict.get(i, [])
     x1, y1, z1 = node_xs[i], node_ys[i], node_zs[i]
     for fwd_idx in fwd_list:
-        if fwd_idx < node_count: # Ensure valid index
+        if fwd_idx < node_count:  # Ensure valid index
             x2, y2, z2 = node_xs[fwd_idx], node_ys[fwd_idx], node_zs[fwd_idx]
             ax.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
 # Plot large green dots for all nodes at (dest_x, dest_y)
@@ -236,26 +253,30 @@ ax.set_ylim(-6, 6)
 ax.set_zlim(0, 12)
 ax.view_init(elev=20, azim=-160)  # <-- Rotate view 180 degrees clockwise
 
-# Load your JPG image (make sure it's not the plot you just saved)
-img = mpimg.imread("Crosswalk.jpg")
+# Load the PNG image with transparency
+img = mpimg.imread("blue_man.png")
 if img.dtype == np.uint8:
-    img = img.astype(np.float32) / 255.0
+    img = img.astype(np.float32) / 255.0  # Normalize to [0,1] range for plotting
 
+# Handle flips (including alpha channel if present)
 img = np.flipud(img)      # Flip vertically (upright)
 img = np.fliplr(img)      # Flip horizontally (invert left to right)
 
-img_height = 3.0
+# Adjust size and position for the billboard (tune img_height/img_width as needed to fit your figurine scale)
+img_height = 4.0  # Smaller height for the figurine to avoid overwhelming the plot
 img_width = img.shape[1] / img.shape[0] * img_height
 
-# For the yz plane, x is fixed, y and z vary
-fixed_x = -2.2  # x position for the left edge of the image
-img_y = np.linspace(-5, -5 + img_width, img.shape[1])
+# Position it on the yz plane (e.g., to the left of the plot, like before)
+fixed_x = -2.2  # x position for the left edge
+img_y = np.linspace(-6, -6 + img_width, img.shape[1])  # Shift y by -1
 img_z = np.linspace(0, img_height, img.shape[0])
 img_y, img_z = np.meshgrid(img_y, img_z)
 img_x = np.full_like(img_y, fixed_x)
 
+# Plot the surface with facecolors (handles RGBA transparency automatically—no white background)
 ax.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=img, shade=False)
 
 # Show and save the static plot
 plt.show()
 fig.savefig("rrt_plot.jpeg", format="jpeg", dpi=300)
+print("Static plot saved as 'rrt_plot.jpeg'.")
