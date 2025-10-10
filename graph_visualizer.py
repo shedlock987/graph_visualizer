@@ -20,14 +20,15 @@ origin_time = 0.0 # Time for origin
 dest_x = 4.5
 dest_y = 4.5
 dest_time = 10.0 # Time for destination (e.g., max_time)
-max_angle_rad = 0.35
+max_angle_rad = 0.25
 max_dist = 2.0
 min_dist = 0.5
 max_interval = 1.5
 max_time = 10.0
 dim_3D = True
-iteration_limit = 1000
+iteration_limit = 500
 initial_heading = 0.78 # Initial heading in radians (e.g., 45 degrees)
+max_admissible = 7
 # Use tuples (pose_t) for ranges, origin, dest
 range_a = (range_a_x, range_a_y, 0.0, 0.0) # Time=0 for range_a (ignored in extraction)
 range_b = (range_b_x, range_b_y, max_time, 0.0) # Time=0 for range_b
@@ -39,7 +40,7 @@ occupancy_map = [
     ((2.5, 2.5, 2.0, 0.0), 2.0),
     ((3.0, 1.5, 12.0, 0.0), 0.4)
 ]
-max_admissible = 4  # New parameter for admissible trajectories
+
 vis_rrt = rrtDemo.RRT(
     occupancy_map, range_a, range_b, origin, dest,
     max_angle_rad, max_dist,
@@ -55,14 +56,6 @@ while not vis_rrt.isComplete():
 # Check results
 print("RRT build complete:", vis_rrt.isComplete())
 print("Number of nodes:", vis_rrt.getNodeCount() - 2) # Exclude origin and dest
-
-
-#debug: print heading of first node
-first_node = vis_rrt.getNodeAt(0)
-if first_node:
-    print("Heading of first node:", first_node.heading())
-else:
-    print("First node not found.")
 
 # Get the coordinates of the first node in vis_rrt
 first_node = vis_rrt.getNodeAt(0)
@@ -93,10 +86,32 @@ for i in range(node_count):
 num_frames = len(all_node_xs)
 duration_ms = 15000 # 15 seconds
 interval_ms = max(1, duration_ms // num_frames) # At least 1 ms per frame
+# Get the last node and check admissibility
+last_node = vis_rrt.getNodeAt(node_count - 1)
+if last_node:
+    last_x = last_node.xCrdnt()
+    last_y = last_node.yCrdnt()
+    last_z = last_node.time()
+    admissible = vis_rrt.isAdmissible(last_node)
+else:
+    last_x, last_y, last_z = None, None, None
+    admissible = False
+
+# Find all nodes at (dest_x, dest_y) within a small tolerance
+xy_tol = 1e-2  # tolerance for floating point comparison
+green_indices = []
+for i in range(node_count):
+    node = vis_rrt.getNodeAt(i)
+    if node:
+        x = node.xCrdnt()
+        y = node.yCrdnt()
+        if abs(x - dest_x) <= xy_tol and abs(y - dest_y) <= xy_tol:
+            green_indices.append(i)
+
 # Render GIF animation if enabled
 if render_gif:
-    # Create the 3D figure for animation (larger size)
-    fig_anim = plt.figure(figsize=(6.4, 4.8))
+    # Double the size of the GIF render (was 6.4 x 4.8, now 12.8 x 9.6)
+    fig_anim = plt.figure(figsize=(12.8, 9.6))
     ax_anim = fig_anim.add_subplot(111, projection='3d')
     # Static elements data (for replotting in each frame)
     obstacle_data = []
@@ -121,22 +136,16 @@ if render_gif:
             ax_anim.scatter(current_xs, current_ys, current_zs, color='orange', s=20)
         # Draw blue lines for forward connections where both nodes are visible
         for i in range(frame + 1):
-            fwd_list = fwd_dict.get(i, []) # Use cached
+            fwd_list = fwd_dict.get(i, [])
             x1, y1, z1 = all_node_xs[i], all_node_ys[i], all_node_zs[i]
             for fwd_idx in fwd_list:
-                if fwd_idx <= frame: # Only draw if forward node is already added
+                if fwd_idx <= frame:
                     x2, y2, z2 = all_node_xs[fwd_idx], all_node_ys[fwd_idx], all_node_zs[fwd_idx]
                     ax_anim.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
-        # If admissible, plot a large green dot at the last node
-        last_idx = frame if frame < node_count else node_count - 1
-        last_node = vis_rrt.getNodeAt(last_idx)
-        if last_node:
-            last_x = last_node.xCrdnt()
-            last_y = last_node.yCrdnt()
-            last_z = last_node.time()
-            admissible = vis_rrt.isAdmissible(last_node)
-            if admissible:
-                ax_anim.scatter(last_x, last_y, last_z, color='green', s=60)
+        # Plot large green dots for all nodes at (dest_x, dest_y) that are visible
+        for idx in green_indices:
+            if idx <= frame:
+                ax_anim.scatter(all_node_xs[idx], all_node_ys[idx], all_node_zs[idx], color='green', s=60)
         # Set labels, title, limits
         ax_anim.set_xlabel('X')
         ax_anim.set_ylabel('Y')
@@ -145,9 +154,21 @@ if render_gif:
         ax_anim.set_xlim(-6, 6)
         ax_anim.set_ylim(-6, 6)
         ax_anim.set_zlim(0, 12)
+        ax_anim.view_init(elev=20, azim=-160)  # <-- Rotate view 180 degrees clockwise
     # Create and save the animation as GIF
     anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
     anim.save('rrt_animation.gif', writer='pillow')
+# Find all nodes at (dest_x, dest_y) within a small tolerance
+xy_tol = 1e-2  # tolerance for floating point comparison
+green_indices = []
+for i in range(node_count):
+    node = vis_rrt.getNodeAt(i)
+    if node:
+        x = node.xCrdnt()
+        y = node.yCrdnt()
+        if abs(x - dest_x) <= xy_tol and abs(y - dest_y) <= xy_tol:
+            green_indices.append(i)
+
 # Create the static 3D plot (larger size)
 fig = plt.figure(figsize=(9.6, 7.2))
 ax = fig.add_subplot(111, projection='3d')
@@ -174,117 +195,22 @@ for i in range(node_count):
         if fwd_idx < node_count: # Ensure valid index
             x2, y2, z2 = node_xs[fwd_idx], node_ys[fwd_idx], node_zs[fwd_idx]
             ax.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
-# Get the last node and check admissibility
-last_node = vis_rrt.getNodeAt(node_count - 1)
-if last_node:
-    last_x = last_node.xCrdnt()
-    last_y = last_node.yCrdnt()
-    last_z = last_node.time()
-    admissible = vis_rrt.isAdmissible(last_node)
-else:
-    last_x, last_y, last_z = None, None, None
-    admissible = False
+# Plot large green dots for all nodes at (dest_x, dest_y)
+for idx in green_indices:
+    ax.scatter(node_xs[idx], node_ys[idx], node_zs[idx], color='green', s=60)
 
-# If admissible, plot a large green dot at the last node
-if admissible and last_x is not None:
-    ax.scatter(last_x, last_y, last_z, color='green', s=60)  # 3x as big as orange (s=20)
 # Set labels and title
 ax.set_xlabel('X')
 ax.set_ylabel('Y')
 ax.set_zlabel('Time')
-ax.set_title('3D Plot of Occupancy Grid Cells and RRT Nodes')
+ax.set_title('3D Visualization of RRT Node Placement')
+
+# Set axis limits
 ax.set_xlim(-6, 6)
 ax.set_ylim(-6, 6)
 ax.set_zlim(0, 12)
-# Display the plot
-plt.show()
-# Find all nodes at (dest_x, dest_y) within tolerance
-xy_tol = 0.01  # 1% tolerance
-green_indices = []
-for i in range(node_count):
-    node = vis_rrt.getNodeAt(i)
-    if node:
-        x = node.xCrdnt()
-        y = node.yCrdnt()
-        if abs(x - dest_x) <= abs(dest_x) * xy_tol and abs(y - dest_y) <= abs(dest_y) * xy_tol:
-            green_indices.append(i)
+ax.view_init(elev=20, azim=-160)  # <-- Rotate view 180 degrees clockwise
 
-# --- GIF Animation ---
-if render_gif:
-    fig_anim = plt.figure(figsize=(6.4, 4.8))
-    ax_anim = fig_anim.add_subplot(111, projection='3d')
-    obstacle_data = []
-    for occ in occupancy_map:
-        (x, y, z, heading), w = occ
-        h = z
-        obstacle_data.append((x - w / 2, y - w / 2, 0, w, w, h))
-    def animate(frame):
-        ax_anim.cla()
-        # Replot obstacles
-        for x_start, y_start, z_start, dx, dy, dz in obstacle_data:
-            ax_anim.bar3d(x_start, y_start, z_start, dx, dy, dz, shade=True, color='red', alpha=0.8)
-        # Plot a blue dot at the first node
-        ax_anim.scatter(first_x, first_y, first_z, color='blue', s=50)
-        # Plot a vertical green line at the destination
-        ax_anim.plot([dest_x, dest_x], [dest_y, dest_y], [0, dest_time], color='green', linewidth=3)
-        # Plot orange points for each node up to current frame
-        current_xs = all_node_xs[:frame + 1]
-        current_ys = all_node_ys[:frame + 1]
-        current_zs = all_node_zs[:frame + 1]
-        if current_xs:
-            ax_anim.scatter(current_xs, current_ys, current_zs, color='orange', s=20)
-        # Draw blue lines for forward connections where both nodes are visible
-        for i in range(frame + 1):
-            fwd_list = fwd_dict.get(i, [])
-            x1, y1, z1 = all_node_xs[i], all_node_ys[i], all_node_zs[i]
-            for fwd_idx in fwd_list:
-                if fwd_idx <= frame:
-                    x2, y2, z2 = all_node_xs[fwd_idx], all_node_ys[fwd_idx], all_node_zs[fwd_idx]
-                    ax_anim.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
-        # Plot large green dots for all nodes at (dest_x, dest_y)
-        for idx in green_indices:
-            if idx <= frame:
-                ax_anim.scatter(all_node_xs[idx], all_node_ys[idx], all_node_zs[idx], color='green', s=60)
-        # Set labels, title, limits
-        ax_anim.set_xlabel('X')
-        ax_anim.set_ylabel('Y')
-        ax_anim.set_zlabel('Time')
-        ax_anim.set_title('3D Animation of RRT Node Placement')
-        ax_anim.set_xlim(-6, 6)
-        ax_anim.set_ylim(-6, 6)
-        ax_anim.set_zlim(0, 12)
-    anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
-    anim.save('rrt_animation.gif', writer='pillow')
-
-# --- Static Plot ---
-fig = plt.figure(figsize=(9.6, 7.2))
-ax = fig.add_subplot(111, projection='3d')
-for occ in occupancy_map:
-    (x, y, z, heading), w = occ
-    h = z
-    ax.bar3d(x - w / 2, y - w / 2, 0, w, w, h, shade=True, color='red', alpha=0.8)
-ax.scatter(first_x, first_y, first_z, color='blue', s=50)
-ax.plot([dest_x, dest_x], [dest_y, dest_y], [0, dest_time], color='green', linewidth=3)
-node_xs = all_node_xs
-node_ys = all_node_ys
-node_zs = all_node_zs
-if node_xs:
-    ax.scatter(node_xs, node_ys, node_zs, color='orange', s=20)
-for i in range(node_count):
-    fwd_list = fwd_dict.get(i, [])
-    x1, y1, z1 = node_xs[i], node_ys[i], node_zs[i]
-    for fwd_idx in fwd_list:
-        if fwd_idx < node_count:
-            x2, y2, z2 = node_xs[fwd_idx], node_ys[fwd_idx], node_zs[fwd_idx]
-            ax.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
-# Plot large green dots for all nodes at (dest_x, dest_y)
-for idx in green_indices:
-    ax.scatter(node_xs[idx], node_ys[idx], node_zs[idx], color='green', s=60)
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Time')
-ax.set_title('3D Plot of Occupancy Grid Cells and RRT Nodes')
-ax.set_xlim(-6, 6)
-ax.set_ylim(-6, 6)
-ax.set_zlim(0, 12)
+# Show and save the static plot
 plt.show()
+fig.savefig("rrt_plot.jpeg", format="jpeg", dpi=300)
