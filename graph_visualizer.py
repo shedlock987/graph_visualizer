@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_graph_builder/rrtDemo'))
 import rrtDemo
 # Enable/disable GIF rendering
-render_gif = True
+render_gif = False
 # Example usage of the exposed VisRRT class (named RRT in Python)
 # Set up parameters for the RRT
 range_a_x = -5.0
