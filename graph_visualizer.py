@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
+import matplotlib.image as mpimg
 sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_graph_builder/rrtDemo'))
 import rrtDemo
 # Enable/disable GIF rendering
@@ -20,7 +21,7 @@ origin_time = 0.0 # Time for origin
 dest_x = 4.5
 dest_y = 4.5
 dest_time = 10.0 # Time for destination (e.g., max_time)
-max_angle_rad = 0.25
+max_angle_rad = 0.3
 max_dist = 2.0
 min_dist = 0.5
 max_interval = 1.5
@@ -35,11 +36,15 @@ range_b = (range_b_x, range_b_y, max_time, 0.0) # Time=0 for range_b
 origin = (origin_x, origin_y, origin_time, initial_heading)
 dest = (dest_x, dest_y, dest_time, 0.0)
 # Define occupancy map as a list of ((x, y, time, heading), width) tuples
+# Add boxes with time (z) determined by the slope, width=0.5, height=1, centroid along the slope line
+# x(y) = -2, y in [-5, 5], 3x density, slope of 16, height of 1
 occupancy_map = [
     ((1.0, 1.0, 12.0, 0.0), 0.5),
-    ((2.5, 2.5, 2.0, 0.0), 2.0),
-    ((3.0, 1.5, 12.0, 0.0), 0.4)
+    ((1.0, 4.0, 12.0, 0.0), 0.4)
 ]
+for y in np.linspace(-5, 5, num=33):  # 33 boxes for 3x density
+    z_centroid = 1.0 + 8 * (y + 5) / 10  # slope line for centroid, slope reduced from 12 to 8
+    occupancy_map.append(((-2.0, y, z_centroid, 0.0), 0.5))  # z_centroid is the center, box height is always 1
 
 vis_rrt = rrtDemo.RRT(
     occupancy_map, range_a, range_b, origin, dest,
@@ -119,6 +124,19 @@ if render_gif:
         (x, y, z, heading), w = occ
         h = z # Use the z (time) value from the tuple as the height of the prism
         obstacle_data.append((x - w / 2, y - w / 2, 0, w, w, h))
+    # Load the image
+    img = mpimg.imread("rrt_plot.jpeg")  # Use your JPG filename
+
+    # Set desired image height in plot
+    img_height = 2.0  # Height in plot units
+    img_width = img.shape[1] / img.shape[0] * img_height  # Scale width proportionally
+
+    # Define the location and size for the image "billboard"
+    img_x = np.linspace(-1, -1 + img_width, img.shape[1])
+    img_y = np.linspace(-5, -5 + img_height, img.shape[0])
+    img_x, img_y = np.meshgrid(img_x, img_y)
+    img_z = np.zeros_like(img_x)  # z=0 for the bottom
+
     def animate(frame):
         ax_anim.cla()
         # Replot obstacles
@@ -155,6 +173,7 @@ if render_gif:
         ax_anim.set_ylim(-6, 6)
         ax_anim.set_zlim(0, 12)
         ax_anim.view_init(elev=20, azim=-160)  # <-- Rotate view 180 degrees clockwise
+        ax_anim.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=img, shade=False)
     # Create and save the animation as GIF
     anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
     anim.save('rrt_animation.gif', writer='pillow')
@@ -172,11 +191,17 @@ for i in range(node_count):
 # Create the static 3D plot (larger size)
 fig = plt.figure(figsize=(9.6, 7.2))
 ax = fig.add_subplot(111, projection='3d')
-# Plot each occupancy grid cell as a rectangular prism (assuming square base in XY, height along Z)
+
 for occ in occupancy_map:
     (x, y, z, heading), w = occ
-    h = z # Use the z (time) value from the tuple as the height of the prism
-    ax.bar3d(x - w / 2, y - w / 2, 0, w, w, h, shade=True, color='red', alpha=0.8)
+    # For the two vertical bars, plot from z=0 up to z=12
+    if (x, y, z) == (1.0, 1.0, 12.0) or (x, y, z) == (1.0, 4.0, 12.0):
+        ax.bar3d(x - w / 2, y - w / 2, 0, w, w, z, shade=True, color='red', alpha=0.8)
+    else:
+        # For sloped bars, use height 1 centered at z
+        h = 1.0
+        ax.bar3d(x - w / 2, y - w / 2, z - h / 2, w, w, h, shade=True, color='red', alpha=0.8)
+
 # Plot a blue dot at the first node
 ax.scatter(first_x, first_y, first_z, color='blue', s=50)
 # Plot a vertical green line at the destination (orthogonal to z/time plane)
@@ -210,6 +235,26 @@ ax.set_xlim(-6, 6)
 ax.set_ylim(-6, 6)
 ax.set_zlim(0, 12)
 ax.view_init(elev=20, azim=-160)  # <-- Rotate view 180 degrees clockwise
+
+# Load your JPG image (make sure it's not the plot you just saved)
+img = mpimg.imread("Crosswalk.jpg")
+if img.dtype == np.uint8:
+    img = img.astype(np.float32) / 255.0
+
+img = np.flipud(img)      # Flip vertically (upright)
+img = np.fliplr(img)      # Flip horizontally (invert left to right)
+
+img_height = 3.0
+img_width = img.shape[1] / img.shape[0] * img_height
+
+# For the yz plane, x is fixed, y and z vary
+fixed_x = -2.2  # x position for the left edge of the image
+img_y = np.linspace(-5, -5 + img_width, img.shape[1])
+img_z = np.linspace(0, img_height, img.shape[0])
+img_y, img_z = np.meshgrid(img_y, img_z)
+img_x = np.full_like(img_y, fixed_x)
+
+ax.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=img, shade=False)
 
 # Show and save the static plot
 plt.show()
