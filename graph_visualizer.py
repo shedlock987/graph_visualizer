@@ -11,7 +11,10 @@ import rrtDemo
 # Enable/disable GIF rendering
 render_gif = False
 
-# Example usage of the exposed VisRRT class (named RRT in Python)
+# Enable/disable adding PNG images to the plot and GIF
+render_png = False
+
+# Example usage of the exposed VisRRT class 
 # Set up parameters for the RRT
 range_a_x = -5.0
 range_a_y = -5.0
@@ -25,11 +28,11 @@ dest_y = 2.5
 dest_time = 10.0  # Time for destination (e.g., max_time)
 max_angle_rad = 0.3
 max_dist = 2.0
-min_dist = 0.5
-max_interval = 1.5
+min_dist = 0.01
+max_interval = 5
 max_time = 10.0
 dim_3D = True
-iteration_limit = 500
+iteration_limit = 1000
 initial_heading = 0.6  
 max_admissible = 7
 
@@ -40,15 +43,17 @@ origin = (origin_x, origin_y, origin_time, initial_heading)
 dest = (dest_x, dest_y, dest_time, 0.0)
 
 # Define occupancy map as a list of ((x, y, time, heading), width) tuples
-# Add boxes with time (z) determined by the slope, width=0.5, height=1, centroid along the slope line
-# x(y) = -2, y in [-5, 5], 3x density, slope of 16, height of 1
 occupancy_map = [
     ((1.0, 1.0, 12.0, 0.0), 0.5),
-    ((1.0, 4.0, 12.0, 0.0), 0.4)
+    ((1.0, 4.0, 12.0, 0.0), 0.5)
 ]
-for y in np.linspace(-5, 5, num=33):  # 33 boxes for 3x density
-    z_centroid = 1.0 + 4 * (y + 5) / 10  # slope line for centroid, slope reduced by half from 8 to 4
-    occupancy_map.append(((-2.0, y, z_centroid, 0.0), 0.5))  # z_centroid is the center, box height is always 1
+for i, y in enumerate(np.linspace(-5, 5, num=33)):  # 33 boxes for 3x density
+    z_centroid = 1.0 + 4 * (y + 5) / 10  # slope line for centroid
+    x_start = -2
+    x_end = 2
+    z_min, z_max = 1.0, 5.0
+    x = x_start + (x_end - x_start) * ((z_centroid - z_min) / (z_max - z_min))
+    occupancy_map.append(((x, y, z_centroid, 0.0), 0.5))  # z_centroid is the center, box height is always 1
 
 vis_rrt = rrtDemo.RRT(
     occupancy_map, range_a, range_b, origin, dest,
@@ -66,6 +71,8 @@ while not vis_rrt.isComplete():
 # Check results
 print("RRT build complete:", vis_rrt.isComplete())
 print("Number of nodes:", vis_rrt.getNodeCount() - 2)  # Exclude origin and dest
+
+#
 
 # Get the coordinates of the first node in vis_rrt
 first_node = vis_rrt.getNodeAt(0)
@@ -185,9 +192,19 @@ if render_gif:
         ax_anim.set_xlim(-6, 6)
         ax_anim.set_ylim(-6, 6)
         ax_anim.set_zlim(0, 12)
-        ax_anim.view_init(elev=20, azim=-160)  # <-- Rotate view 180 degrees clockwise
+        ax_anim.view_init(elev=40, azim=-135)  # <-- Rotate view 225 degrees clockwise
         # Plot with transparency
-        ax_anim.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=img, shade=False)
+        if render_png:
+            ax_anim.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=img, shade=False)
+            for x, y, z in yield_positions:
+                # Position on yz plane, matching bar3d transformation: x - w/2 - 3.5, y - w/2 - 2
+                fixed_x = x - 0.5 / 2 - 3.5  # w=0.5 from occupancy_map
+                fixed_y = y - 0.5 / 2 - 2
+                img_y = np.linspace(fixed_y, fixed_y + yield_width, yield_img.shape[1])
+                img_z = np.linspace(0, yield_height, yield_img.shape[0])
+                img_y, img_z = np.meshgrid(img_y, img_z)
+                img_x = np.full_like(img_y, fixed_x)
+                ax_anim.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=yield_img, shade=False)
 
     # Create and save the animation as GIF
     anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
@@ -251,7 +268,7 @@ ax.set_title('3D Visualization of RRT Node Placement')
 ax.set_xlim(-6, 6)
 ax.set_ylim(-6, 6)
 ax.set_zlim(0, 12)
-ax.view_init(elev=20, azim=-160)  # <-- Rotate view 180 degrees clockwise
+ax.view_init(elev=40, azim=-135)  # <-- Rotate view 225 degrees clockwise
 
 # Load the PNG image with transparency
 img = mpimg.imread("blue_man.png")
@@ -273,10 +290,134 @@ img_z = np.linspace(0, img_height, img.shape[0])
 img_y, img_z = np.meshgrid(img_y, img_z)
 img_x = np.full_like(img_y, fixed_x)
 
-# Plot the surface with facecolors (handles RGBA transparency automatically—no white background)
-ax.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=img, shade=False)
+# Load yield.png and normalize
+yield_img = mpimg.imread("yield.png")
+if yield_img.dtype == np.uint8:
+    yield_img = yield_img.astype(np.float32) / 255.0
 
-# Show and save the static plot
+# Flip and mirror if needed (to match blue_man orientation)
+yield_img = np.flipud(yield_img)
+yield_img = np.fliplr(yield_img)
+
+# Set size for yield sign
+yield_height = 3.0
+yield_width = yield_img.shape[1] / yield_img.shape[0] * yield_height
+
+
+yield_positions = [
+    (-4, 0, 12.0),
+    (-4, 3, 12.0)
+]
+
+# Only plot images if enabled, and do it at the very end
+if render_png:
+    # Plot blue_man.png
+    ax.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=img, shade=False)
+    # Plot yield.png at both positions
+    for x, y, z in yield_positions:
+        fixed_x = x  # Use the new x position directly
+        fixed_y = y - 0.5 / 2 - 2
+        img_y = np.linspace(fixed_y, fixed_y + yield_width, yield_img.shape[1])
+        img_z = np.linspace(0, yield_height, yield_img.shape[0])
+        img_y, img_z = np.meshgrid(img_y, img_z)
+        img_x = np.full_like(img_y, fixed_x)
+        ax.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=yield_img, shade=False)
+
 plt.show()
 fig.savefig("rrt_plot.jpeg", format="jpeg", dpi=300)
 print("Static plot saved as 'rrt_plot.jpeg'.")
+
+# At line 332 (after static plot is shown and saved)
+if not render_gif:
+    response = input("GIF rendering is disabled. Do you want to generate the GIF? (y/n): ").strip().lower()
+    if response == 'n':
+        sys.exit()
+    elif response == 'y':
+        render_gif = True
+        print("GIF generation enabled. Continuing...")
+    else:
+        print("Invalid input. Exiting.")
+        sys.exit()
+
+# --- GIF Animation Section ---
+if render_gif:
+    # Double the size of the GIF render (was 6.4 x 4.8, now 12.8 x 9.6)
+    fig_anim = plt.figure(figsize=(12.8, 9.6))
+    ax_anim = fig_anim.add_subplot(111, projection='3d')
+    # Static elements data (for replotting in each frame)
+    obstacle_data = []
+    for occ in occupancy_map:
+        (x, y, z, heading), w = occ
+        h = z  # Use the z (time) value from the tuple as the height of the prism
+        obstacle_data.append((x - w / 2, y - w / 2, 0, w, w, h))
+
+    # Load the PNG image with transparency
+    img = mpimg.imread("blue_man.png")
+    if img.dtype == np.uint8:
+        img = img.astype(np.float32) / 255.0
+
+    # Handle flips (including alpha)
+    img = np.flipud(img)
+
+
+    # Same sizing/positioning as static plot
+    img_height = 4
+    img_width = img.shape[1] / img.shape[0] * img_height
+    fixed_x = -2.2
+    img_y = np.linspace(-5 - 1, -5 + img_width - 1, img.shape[1])  # Shift y by -1
+    img_z = np.linspace(0, img_height, img.shape[0])
+    img_y, img_z = np.meshgrid(img_y, img_z)
+    img_x = np.full_like(img_y, fixed_x)
+
+    def animate(frame):
+        ax_anim.cla()
+        # Replot obstacles
+        for x_start, y_start, z_start, dx, dy, dz in obstacle_data:
+            ax_anim.bar3d(x_start, y_start, z_start, dx, dy, dz, shade=True, color='red', alpha=0.8)
+        # Plot a blue dot at the first node
+        ax_anim.scatter(first_x, first_y, first_z, color='blue', s=50)
+        # Plot a vertical green line at the destination (orthogonal to z/time plane)
+        ax_anim.plot([dest_x, dest_x], [dest_y, dest_y], [0, dest_time], color='green', linewidth=3)
+        # Plot nodes up to current frame
+        current_xs = all_node_xs[:frame + 1]
+        current_ys = all_node_ys[:frame + 1]
+        current_zs = all_node_zs[:frame + 1]
+        if current_xs:
+            ax_anim.scatter(current_xs, current_ys, current_zs, color='orange', s=20)
+        # Draw blue lines for forward connections where both nodes are visible
+        for i in range(frame + 1):
+            fwd_list = fwd_dict.get(i, [])
+            x1, y1, z1 = all_node_xs[i], all_node_ys[i], all_node_zs[i]
+            for fwd_idx in fwd_list:
+                if fwd_idx <= frame:
+                    x2, y2, z2 = all_node_xs[fwd_idx], all_node_ys[fwd_idx], all_node_zs[fwd_idx]
+                    ax_anim.plot([x1, x2], [y1, y2], [z1, z2], color='blue', linewidth=1, alpha=0.7)
+        # Plot large green dots for all nodes at (dest_x, dest_y) that are visible
+        for idx in green_indices:
+            if idx <= frame:
+                ax_anim.scatter(all_node_xs[idx], all_node_ys[idx], all_node_zs[idx], color='green', s=60)
+        # Set labels, title, limits
+        ax_anim.set_xlabel('X')
+        ax_anim.set_ylabel('Y')
+        ax_anim.set_zlabel('Time')
+        ax_anim.set_title('3D Animation of RRT Node Placement')
+        ax_anim.set_xlim(-6, 6)
+        ax_anim.set_ylim(-6, 6)
+        ax_anim.set_zlim(0, 12)
+        ax_anim.view_init(elev=40, azim=-225)  # <-- Rotate view 225 degrees clockwise
+        # Plot with transparency
+        if render_png:
+            ax_anim.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=img, shade=False)
+            for x, y, z in yield_positions:
+                # Position on yz plane, matching bar3d transformation: x - w/2 - 3.5, y - w/2 - 2
+                fixed_x = x - 0.5 / 2 - 3.5  # w=0.5 from occupancy_map
+                fixed_y = y - 0.5 / 2 - 2
+                img_y = np.linspace(fixed_y, fixed_y + yield_width, yield_img.shape[1])
+                img_z = np.linspace(0, yield_height, yield_img.shape[0])
+                img_y, img_z = np.meshgrid(img_y, img_z)
+                img_x = np.full_like(img_y, fixed_x)
+                ax_anim.plot_surface(img_x, img_y, img_z, rstride=1, cstride=1, facecolors=yield_img, shade=False)
+
+    # Create and save the animation as GIF
+    anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
+    anim.save('rrt_animation.gif', writer='pillow')
