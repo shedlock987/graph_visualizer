@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 import matplotlib.image as mpimg
-sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_graph_builder/rrtDemo'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_demo_app/build'))
+#sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_graph_builder/rrtDemo'))
 import rrtDemo
 
 # Enable/disable GIF rendering
