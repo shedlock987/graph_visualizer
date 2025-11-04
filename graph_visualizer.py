@@ -11,8 +11,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_demo_app/build')
 import rrtDemo
 
 # Flags
-render_gif = False
-render_png = True
+render_gif = True
+render_png = False
 
 # View Angles
 elev_angle = 10
@@ -87,6 +87,11 @@ first_x, first_y, first_z = (first_node.xCrdnt(), first_node.yCrdnt(), first_nod
 num_frames = len(all_node_xs)
 duration_ms = 15000
 interval_ms = max(1, duration_ms // num_frames)
+
+# Rotation params
+rot_duration_ms = 5000
+rot_frames = int(rot_duration_ms / interval_ms) + 1  # +1 to include start frame
+total_frames = num_frames + rot_frames
 
 # Green indices (destination nodes)
 xy_tol = 1e-2
@@ -191,14 +196,14 @@ def plot_images(ax, image_data):
         ax.plot_surface(img_x_loc, img_y_loc, img_z_loc, rstride=1, cstride=1, facecolors=yield_img, shade=False)
 
 # Set common axis properties
-def set_axis_props(ax):
+def set_axis_props(ax, azim):
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Time')
     ax.set_xlim(-6, 6)
     ax.set_ylim(-6, 6)
     ax.set_zlim(0, 12)
-    ax.view_init(elev=elev_angle, azim=azim_angle)  # Consistent view
+    ax.view_init(elev=elev_angle, azim=azim)  # Dynamic azim
 
 # Static plot
 fig = plt.figure(figsize=(9.6, 7.2))
@@ -210,7 +215,7 @@ plot_tree(ax, all_node_xs, all_node_ys, all_node_zs, fwd_dict, green_indices,
           first_x=first_x, first_y=first_y, first_z=first_z)
 plot_images(ax, image_data)
 
-set_axis_props(ax)
+set_axis_props(ax, azim_angle)
 ax.set_title('3D Visualization of RRT Node Placement')
 
 plt.show()
@@ -224,14 +229,31 @@ if render_gif:
     def animate(frame):
         ax_anim.cla()
         plot_obstacles(ax_anim, occupancy_map)
-        plot_tree(ax_anim, all_node_xs, all_node_ys, all_node_zs, fwd_dict, green_indices,
-                  frame=frame, dest_x=dest_x, dest_y=dest_y, dest_time=dest_time,
-                  first_x=first_x, first_y=first_y, first_z=first_z)
-        plot_images(ax_anim, image_data)
-        set_axis_props(ax_anim)
-        ax_anim.set_title(f'3D Animation of RRT Node Placement (Frame {frame + 1}/{num_frames})')
+        
+        if frame < num_frames:
+            # Building phase
+            plot_tree(ax_anim, all_node_xs, all_node_ys, all_node_zs, fwd_dict, green_indices,
+                      frame=frame, dest_x=dest_x, dest_y=dest_y, dest_time=dest_time,
+                      first_x=first_x, first_y=first_y, first_z=first_z)
+            if render_png:
+                plot_images(ax_anim, image_data)
+            current_azim = azim_angle
+            title = f'Building Tree (Frame {frame + 1}/{num_frames})'
+        else:
+            # Rotation phase: full tree, no images
+            plot_tree(ax_anim, all_node_xs, all_node_ys, all_node_zs, fwd_dict, green_indices,
+                      frame=None, dest_x=dest_x, dest_y=dest_y, dest_time=dest_time,
+                      first_x=first_x, first_y=first_y, first_z=first_z)
+            # No plot_images
+            rot_frame_idx = frame - num_frames
+            rot_progress = rot_frame_idx / (rot_frames - 1)
+            current_azim = azim_angle + 180 * rot_progress
+            title = f'Rotating View ({rot_progress:.1%})'
+        
+        set_axis_props(ax_anim, current_azim)
+        ax_anim.set_title(title)
     
-    anim = animation.FuncAnimation(fig_anim, animate, frames=num_frames, interval=interval_ms, blit=False, repeat=True)
+    anim = animation.FuncAnimation(fig_anim, animate, frames=total_frames, interval=interval_ms, blit=False, repeat=True)
     anim.save('rrt_animation.gif', writer='pillow')
     print("GIF saved as 'rrt_animation.gif'.")
     plt.close(fig_anim)
