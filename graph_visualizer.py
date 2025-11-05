@@ -12,7 +12,7 @@ import rrtDemo
 
 # Flags
 render_gif = True
-render_png = False
+render_png = True
 
 # View Angles
 elev_angle = 10
