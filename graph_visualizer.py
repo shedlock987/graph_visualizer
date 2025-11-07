@@ -11,8 +11,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_demo_app/build')
 import rrtDemo
 
 # Flags
-render_gif = True
-render_png = True
+render_gif = False
+render_png = False
 
 # View Angles
 elev_angle = 10
