@@ -71,17 +71,21 @@ node_count = vis_rrt.getNodeCount()
 all_node_xs, all_node_ys, all_node_zs = [], [], []
 fwd_dict = {}
 for i in range(node_count):
-    node = vis_rrt.getNodeAt(i)
-    if node:
-        all_node_xs.append(node.xCrdnt())
-        all_node_ys.append(node.yCrdnt())
-        all_node_zs.append(node.time())
-        fwd_indices = vis_rrt.getForwardIndices(i)
-        fwd_dict[i] = list(fwd_indices)
+    # Use value accessors to avoid holding Python references to C++ pointer
+    # objects that may be invalidated as the RRT grows.
+    x = vis_rrt.getNodeX(i)
+    y = vis_rrt.getNodeY(i)
+    z = vis_rrt.getNodeTime(i)
+    all_node_xs.append(x)
+    all_node_ys.append(y)
+    all_node_zs.append(z)
+    fwd_indices = vis_rrt.getForwardIndices(i)
+    fwd_dict[i] = list(fwd_indices)
 
 # First node
-first_node = vis_rrt.getNodeAt(0)
-first_x, first_y, first_z = (first_node.xCrdnt(), first_node.yCrdnt(), first_node.time()) if first_node else (0, 0, 0)
+first_x = vis_rrt.getNodeX(0)
+first_y = vis_rrt.getNodeY(0)
+first_z = vis_rrt.getNodeTime(0)
 
 # Animation params
 num_frames = len(all_node_xs)
