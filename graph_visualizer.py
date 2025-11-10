@@ -6,6 +6,12 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 import matplotlib.image as mpimg
 
+# ensure artifact and output directories
+ARTIFACT_DIR = os.path.join(os.path.dirname(__file__), "vis_artifacts")
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+os.makedirs(ARTIFACT_DIR, exist_ok=True)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
 # Add path to rrtDemo (uncommented and cleaned)
 sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_demo_app/build'))
 import rrtDemo
@@ -106,7 +112,8 @@ green_indices = [i for i in range(node_count) if vis_rrt.getNodeAt(i) and
 # Image preparation (if enabled)
 def prepare_images():
     # Blue man
-    img = mpimg.imread("blue_man.png")
+    img_path = os.path.join(ARTIFACT_DIR, "blue_man.png")
+    img = mpimg.imread(img_path)
     if img.dtype == np.uint8:
         img = img.astype(np.float32) / 255.0
     img = np.flipud(img)
@@ -120,7 +127,8 @@ def prepare_images():
     img_x = np.full_like(img_y, fixed_x)
     
     # Yield sign
-    yield_img = mpimg.imread("yield.png")
+    yield_path = os.path.join(ARTIFACT_DIR, "yield.png")
+    yield_img = mpimg.imread(yield_path)
     if yield_img.dtype == np.uint8:
         yield_img = yield_img.astype(np.float32) / 255.0
     yield_img = np.flipud(yield_img)
@@ -223,8 +231,9 @@ set_axis_props(ax, azim_angle)
 ax.set_title('3D Visualization of RRT Node Placement')
 
 plt.show()
-fig.savefig("rrt_plot.jpeg", format="jpeg", dpi=300)
-print("Static plot saved as 'rrt_plot.jpeg'.")
+plot_path = os.path.join(OUTPUT_DIR, "rrt_plot.jpeg")
+fig.savefig(plot_path, format="jpeg", dpi=300)
+print(f"Static plot saved as '{plot_path}'.")
 
 if render_gif:
     fig_anim = plt.figure(figsize=(12.8, 9.6))
@@ -258,6 +267,7 @@ if render_gif:
         ax_anim.set_title(title)
     
     anim = animation.FuncAnimation(fig_anim, animate, frames=total_frames, interval=interval_ms, blit=False, repeat=True)
-    anim.save('rrt_animation.gif', writer='pillow')
-    print("GIF saved as 'rrt_animation.gif'.")
+    gif_path = os.path.join(OUTPUT_DIR, "rrt_animation.gif")
+    anim.save(gif_path, writer='pillow')
+    print(f"GIF saved as '{gif_path}'.")
     plt.close(fig_anim)

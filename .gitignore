@@ -127,14 +127,16 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
-.env
-.venv
-env/
+# Environments (Python virtualenvs)
+# Ignore common virtual environment directories
+.venv/
 venv/
+env/
 ENV/
 env.bak/
 venv.bak/
+.Python
+.env
 
 # Spyder project settings
 .spyderproject
@@ -178,7 +180,7 @@ cython_debug/
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
 #  and can be added to the global gitignore or merged into this file. However, if you prefer, 
 #  you could uncomment the following to ignore the enitre vscode folder
-# .vscode/
+.vscode/
 
 # Ruff stuff:
 .ruff_cache/
