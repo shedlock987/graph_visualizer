@@ -7,8 +7,11 @@ import matplotlib.animation as animation
 import matplotlib.image as mpimg
 
 # ensure artifact and output directories
-ARTIFACT_DIR = os.path.join(os.path.dirname(__file__), "vis_artifacts")
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+ARTIFACT_DIR = os.path.join(BASE_DIR, "vis_artifacts")
+OUTPUT_DIR = os.path.join(BASE_DIR, "output")
+
+# create once, using absolute paths
 os.makedirs(ARTIFACT_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
@@ -209,9 +212,10 @@ def plot_images(ax, image_data):
 
 # Set common axis properties
 def set_axis_props(ax, azim):
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Time')
+    fs = 12
+    ax.set_xlabel('X', fontweight='bold', fontsize=fs)
+    ax.set_ylabel('Y', fontweight='bold', fontsize=fs)
+    ax.set_zlabel('Time', fontweight='bold', fontsize=fs)
     ax.set_xlim(-6, 6)
     ax.set_ylim(-6, 6)
     ax.set_zlim(0, 12)
