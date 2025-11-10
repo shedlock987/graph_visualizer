@@ -28,10 +28,8 @@ git clone https://github.com/shedlock987/rrt_demo_app.git
 
 2. Build the demo app (produce `rrtDemo.so`):
 ```bash
-cd rrt_demo_app
-mkdir -p build && cd build
-cmake ..
-make -j$(sysctl -n hw.ncpu)   # or `make -j4`
+cd rrt_demo_app/scripts
+./build_rrt.sh
 # this should create rrtDemo.so in rrt_demo_app/build/
 ```
 
@@ -61,6 +59,8 @@ python3 graph_visualizer.py
 - Toggle image rendering in `graph_visualizer.py`:
   - `render_png = True|False`
   - `render_gif = True|False`
+- render_png will ad in some contextual images to help one understand the 3D RRT occupancy-space concept (will slow down script significantly)
+- render_gif will create a gif that shows the RRT dynamically being built
 - Image files and sizes are handled in `prepare_images()` inside the script.
 - The script computes absolute paths for `vis_artifacts/` and `output/` relative to the script location.
 
