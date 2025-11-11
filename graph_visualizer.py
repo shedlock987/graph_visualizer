@@ -16,7 +16,7 @@ os.makedirs(ARTIFACT_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Add path to rrtDemo (uncommented and cleaned)
-sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_demo_app/build'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_demo_app/prebuilt'))
 import rrtDemo
 
 # Flags
