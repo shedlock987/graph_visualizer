@@ -16,7 +16,15 @@ os.makedirs(ARTIFACT_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Add path to rrtDemo (uncommented and cleaned)
-sys.path.append(os.path.join(os.path.dirname(__file__), '../rrt_demo_app/prebuilt'))
+prebuilt_path = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "rrt_demo_app", "prebuilt", "macOS")
+)
+
+if not os.path.exists(os.path.join(prebuilt_path, "rrtDemo.so")):
+    raise FileNotFoundError(f"rrtDemo.so not found! Expected at:\n  {prebuilt_path}/rrtDemo.so")
+
+sys.path.insert(0, prebuilt_path)  # insert(0, ...) = highest priority
+print(f"Adding to Python path: {prebuilt_path}")
 import rrtDemo
 
 # Flags
