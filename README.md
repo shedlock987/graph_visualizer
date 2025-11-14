@@ -14,7 +14,7 @@ This project depends on two sibling repositories that must be present and built:
 - rrt_demo_app — CMake project that builds the RRT library and produces the Python extension `rrtDemo.so`.  
   Remote: https://github.com/shedlock987/rrt_demo_app
 
-Note: `rrt_demo_app` invokes the rrt_graph_builder build, compiles the native code and produces Python bindings (typically via pybind11 or Boost.Python). The resulting `rrtDemo.so` must be built with the same Python ABI as the interpreter used to run `graph_visualizer.py` and placed in `rrt_demo_app/build/` so the visualizer can import it.
+Note: `rrt_demo_app` invokes the rrt_graph_builder build, compiles the native code and produces Python bindings via pybind11. The resulting `rrtDemo.so` must be built with the same Python ABI as the interpreter used to run `graph_visualizer.py` and placed in `rrt_demo_app/build/` so the visualizer can import it.
 
 ## Quick start
 
@@ -42,7 +42,7 @@ source .venv/bin/activate
 4. Install Python dependencies
 ```bash
 pip install --upgrade pip
-pip install numpy matplotlib plotly pillow imageio kaleido
+pip install numpy matplotlib plotly pillow imageio kaleido pybind11
 ```
 
 5. Run the visualizer
@@ -82,7 +82,7 @@ After system packages:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install numpy matplotlib plotly pillow imageio kaleido
+pip install numpy matplotlib plotly pillow imageio kaleido pybind11
 ```
 
 ## Build / debug notes

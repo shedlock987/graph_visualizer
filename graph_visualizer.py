@@ -7,6 +7,10 @@ import matplotlib.animation as animation
 import matplotlib.image as mpimg
 import platform
 
+# Flags
+render_gif = False
+render_png = False
+
 # ensure artifact and output directories
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 ARTIFACT_DIR = os.path.join(BASE_DIR, "vis_artifacts")
@@ -64,10 +68,6 @@ except Exception as e:
         f"Use --apple / --linux or set RRT_DEMO_PLATFORM to override. Original error: {e}"
     )
 
-# Flags
-render_gif = True
-render_png = True
-
 # View Angles
 elev_angle = 10
 azim_angle = -135
@@ -88,6 +88,9 @@ dim_3D = True
 iteration_limit = 1000
 initial_heading = 0.6
 max_admissible = 7
+max_long_accel = 3.0
+max_long_jerk = 1.0
+max_kappa_rad = 1.0
 
 # Tuples
 range_a = (range_a_x, range_a_y, 0.0, 0.0)
@@ -111,7 +114,8 @@ for i, y in enumerate(np.linspace(-5, 5, num=33)):
 vis_rrt = rrtDemo.RRT(
     occupancy_map, range_a, range_b, origin, dest,
     max_angle_rad, max_dist, min_dist, max_interval,
-    max_time, dim_3D, iteration_limit, max_admissible
+    max_time, dim_3D, iteration_limit, max_admissible,
+    max_long_accel, max_long_jerk, max_kappa_rad
 )
 
 while not vis_rrt.isComplete():
