@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 import matplotlib.image as mpimg
+import platform
 
 # ensure artifact and output directories
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -15,17 +16,53 @@ OUTPUT_DIR = os.path.join(BASE_DIR, "output")
 os.makedirs(ARTIFACT_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Add path to rrtDemo (uncommented and cleaned)
+# Add path to rrtDemo 
 prebuilt_path = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "rrt_demo_app", "prebuilt", "macOS")
 )
 
-if not os.path.exists(os.path.join(prebuilt_path, "rrtDemo.so")):
-    raise FileNotFoundError(f"rrtDemo.so not found! Expected at:\n  {prebuilt_path}/rrtDemo.so")
+# Simple user-selectable flag override for platform detection:
+# - CLI: pass --apple / --mac / --macos or --linux
+# - Env: set RRT_DEMO_PLATFORM to 'apple'/'macos' or 'linux'
+platform_override = None
+if any(flag in sys.argv for flag in ("--apple", "--mac", "--macos")):
+    platform_override = "Darwin"
+elif "--linux" in sys.argv:
+    platform_override = "Linux"
+env_val = os.environ.get("RRT_DEMO_PLATFORM", "").lower()
+if env_val in ("apple", "mac", "macos", "darwin"):
+    platform_override = "Darwin"
+elif env_val == "linux":
+    platform_override = "Linux"
 
-sys.path.insert(0, prebuilt_path)  # insert(0, ...) = highest priority
-print(f"Adding to Python path: {prebuilt_path}")
-import rrtDemo
+system_name = platform_override if platform_override is not None else platform.system()
+
+if system_name == "Darwin":
+    subdir = "macOS"
+elif system_name == "Linux":
+    subdir = "linux"
+else:
+    subdir = ""
+
+if subdir:
+    rrt_dir = os.path.abspath(os.path.join(BASE_DIR, "..", "rrt_demo_app", "prebuilt", subdir))
+else:
+    rrt_dir = os.path.abspath(os.path.join(BASE_DIR, "..", "rrt_demo_app", "prebuilt"))
+
+if os.path.isdir(rrt_dir):
+    if rrt_dir not in sys.path:
+        sys.path.insert(0, rrt_dir)
+else:
+    # keep trying import from existing sys.path; warn user
+    print(f"Warning: rrtDemo prebuilt directory not found at: {rrt_dir}")
+
+try:
+    import rrtDemo
+except Exception as e:
+    raise ImportError(
+        f"Failed to import rrtDemo. Tried directory: {rrt_dir!s}. "
+        f"Use --apple / --linux or set RRT_DEMO_PLATFORM to override. Original error: {e}"
+    )
 
 # Flags
 render_gif = False
