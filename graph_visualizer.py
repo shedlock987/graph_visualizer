@@ -65,8 +65,8 @@ except Exception as e:
     )
 
 # Flags
-render_gif = False
-render_png = False
+render_gif = True
+render_png = True
 
 # View Angles
 elev_angle = 10
