@@ -10,7 +10,6 @@ import platform
 # Flags
 render_gif = False
 render_png = False
-
 # ensure artifact and output directories
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 ARTIFACT_DIR = os.path.join(BASE_DIR, "vis_artifacts")
